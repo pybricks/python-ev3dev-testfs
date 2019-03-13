@@ -1,0 +1,5 @@
+*       text=auto
+
+*.png   binary
+
+ev3dev/testfs/_version.py export-subst

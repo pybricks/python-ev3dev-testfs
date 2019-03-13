@@ -1,0 +1,2 @@
+include versioneer.py
+include ev3dev/testfs/_version.py

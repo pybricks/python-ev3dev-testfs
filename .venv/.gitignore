@@ -1,0 +1,3 @@
+# This directory is used to give a hint to pipenv to create its venv here
+*
+!.gitignore
