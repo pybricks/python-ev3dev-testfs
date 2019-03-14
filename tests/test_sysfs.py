@@ -1,7 +1,5 @@
-import base64
 import copy
 import errno
-import json
 import os
 import stat
 import sys
@@ -37,19 +35,10 @@ TEST_ROOT = {
             'name': 'file1',
             'type': 'file',
             'mode': 0o644,
-            'contents': '',
+            'contents': _sysfs.encode('test 123'),
         },
     ],
 }
-
-
-def encode(obj: dict) -> str:
-    return base64.b64encode(json.dumps(obj).encode()).decode()
-
-
-def decode(obj: str) -> dict:
-    return json.loads(base64.b64decode(obj.encode()).decode())
-
 
 @contextmanager
 def get_tmp_dir() -> str:
@@ -111,9 +100,9 @@ def get_proc(mount_point: str) -> Popen:
 
 def test_encode_decode():
     SMALL_DICT = {'key': 'value'}
-    enc = encode(SMALL_DICT)
+    enc = _sysfs.encode(SMALL_DICT)
     assert type(enc) is str
-    dec = decode(enc)
+    dec = _sysfs.decode(enc)
     assert dec == SMALL_DICT
 
 
@@ -241,7 +230,7 @@ def test_stat_dir1():
             reply = p.stdout.readline().strip()
             assert reply == 'READY'
 
-            msg = 'SET {}'.format(encode(TEST_ROOT))
+            msg = 'SET {}'.format(_sysfs.encode(TEST_ROOT))
             print(msg, file=p.stdin, flush=True)
             reply = p.stdout.readline().strip()
             assert reply == 'OK'
@@ -264,7 +253,7 @@ def test_ls_dir1():
             reply = p.stdout.readline().strip()
             assert reply == 'READY'
 
-            msg = 'SET {}'.format(encode(TEST_ROOT))
+            msg = 'SET {}'.format(_sysfs.encode(TEST_ROOT))
             print(msg, file=p.stdin, flush=True)
             reply = p.stdout.readline().strip()
             assert reply == 'OK'
@@ -280,7 +269,7 @@ def test_open_dir1():
             reply = p.stdout.readline().strip()
             assert reply == 'READY'
 
-            msg = 'SET {}'.format(encode(TEST_ROOT))
+            msg = 'SET {}'.format(_sysfs.encode(TEST_ROOT))
             print(msg, file=p.stdin, flush=True)
             reply = p.stdout.readline().strip()
             assert reply == 'OK'
@@ -297,7 +286,7 @@ def test_open_file1():
             reply = p.stdout.readline().strip()
             assert reply == 'READY'
 
-            msg = 'SET {}'.format(encode(TEST_ROOT))
+            msg = 'SET {}'.format(_sysfs.encode(TEST_ROOT))
             print(msg, file=p.stdin, flush=True)
             reply = p.stdout.readline().strip()
             assert reply == 'OK'

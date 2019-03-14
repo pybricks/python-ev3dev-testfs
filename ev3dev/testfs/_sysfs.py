@@ -20,6 +20,14 @@ _ROOT = {
 }
 
 
+def encode(obj: dict) -> str:
+    return base64.b64encode(json.dumps(obj).encode()).decode()
+
+
+def decode(obj: str) -> dict:
+    return json.loads(base64.b64decode(obj.encode()).decode())
+
+
 class SysfsStat(fuse.Stat):
     def __init__(self):
         self.st_mode = 0
@@ -45,10 +53,9 @@ class SysfsFuse(fuse.Fuse):
         try:
             line = line.split()
             if line[0] == 'GET':
-                data = base64.b64encode(json.dumps(self._root).encode())
-                return 'OK {}'.format(data.decode())
+                return 'OK {}'.format(encode(self._root))
             if line[0] == 'SET':
-                self._root = json.loads(base64.b64decode(line[1]))
+                self._root = decode(line[1])
                 return 'OK'
             raise ValueError('Unknown command: {}'.format(line[0]))
         except Exception as ex:
