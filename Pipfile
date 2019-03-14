@@ -5,6 +5,8 @@ verify_ssl = true
 
 [dev-packages]
 versioneer = "*"
+rope = "*"
+pep8 = "*"
 
 [packages]
 
