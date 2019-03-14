@@ -235,10 +235,18 @@ def test_open():
 ###############################################################################
 
 
-def test_stat_class():
+def test_stat_dir1():
     with get_tmp_dir() as t:
         with get_proc(t) as p:
-            st = os.stat(os.path.join(t, 'class'))
+            reply = p.stdout.readline().strip()
+            assert reply == 'READY'
+
+            msg = 'SET {}'.format(encode(TEST_ROOT))
+            print(msg, file=p.stdin, flush=True)
+            reply = p.stdout.readline().strip()
+            assert reply == 'OK'
+
+            st = os.stat(os.path.join(t, 'dir1'))
             assert stat.S_IFMT(st.st_mode) == stat.S_IFDIR
             assert stat.S_IMODE(st.st_mode) == 0o755
 
@@ -247,25 +255,38 @@ def test_ls_root():
     with get_tmp_dir() as t:
         with get_proc(t) as p:
             ls = os.listdir(t)
-            assert 'class' in ls
+            assert len(ls) == 0
+
+
+def test_ls_dir1():
+    with get_tmp_dir() as t:
+        with get_proc(t) as p:
+            reply = p.stdout.readline().strip()
+            assert reply == 'READY'
+
+            msg = 'SET {}'.format(encode(TEST_ROOT))
+            print(msg, file=p.stdin, flush=True)
+            reply = p.stdout.readline().strip()
+            assert reply == 'OK'
+
+            ls = os.listdir(os.path.join(t, 'dir1'))
+            assert 'dir2' in ls
             assert len(ls) == 1
 
 
-def test_ls_class():
+def test_open_dir1():
     with get_tmp_dir() as t:
         with get_proc(t) as p:
-            ls = os.listdir(os.path.join(t, 'class'))
-            assert 'lego-port' in ls
-            assert 'lego-sensor' in ls
-            assert 'tacho-motor' in ls
-            assert len(ls) == 3
+            reply = p.stdout.readline().strip()
+            assert reply == 'READY'
 
+            msg = 'SET {}'.format(encode(TEST_ROOT))
+            print(msg, file=p.stdin, flush=True)
+            reply = p.stdout.readline().strip()
+            assert reply == 'OK'
 
-def test_open_class():
-    with get_tmp_dir() as t:
-        with get_proc(t) as p:
             with pytest.raises(OSError) as exc_info:
-                with open(os.path.join(t, 'class')) as f:
+                with open(os.path.join(t, 'dir1')) as f:
                     pass
             assert exc_info.value.errno == errno.EISDIR
 

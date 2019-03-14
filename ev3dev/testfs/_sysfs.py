@@ -18,33 +18,7 @@ _ROOT = {
     'type': 'directory',
     'name': '/',
     'mode': 0o555,
-    'contents': [
-        {
-            'type': 'directory',
-            'name': 'class',
-            'mode': 0o755,
-            'contents': [
-                {
-                    'type': 'directory',
-                    'name': 'lego-port',
-                    'mode': 0o755,
-                    'contents': [],
-                },
-                {
-                    'type': 'directory',
-                    'name': 'lego-sensor',
-                    'mode': 0o755,
-                    'contents': [],
-                },
-                {
-                    'type': 'directory',
-                    'name': 'tacho-motor',
-                    'mode': 0o755,
-                    'contents': [],
-                },
-            ],
-        },
-    ],
+    'contents': [],
 }
 
 
