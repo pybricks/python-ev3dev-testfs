@@ -232,6 +232,16 @@ def test_open():
     assert err == -errno.EACCES
 
 
+def test_read():
+    sysfs = _sysfs.SysfsFuse()
+    sysfs._root = copy.deepcopy(TEST_ROOT)
+
+    ret = sysfs.read('/file1', 4096, 0)
+    assert ret == ALL_BYTES
+    ret = sysfs.read('/file0', 4096, 0)
+    assert ret == -errno.ENOENT
+
+
 ###############################################################################
 # The tests below actually setup a FUSE mount and call _sysfs as a subprocess
 ###############################################################################
@@ -316,3 +326,19 @@ def test_open_file1():
                 with open(os.path.join(t, 'file1'), 'w') as f:
                     pass
             assert exc_info.value.errno == errno.EACCES
+
+
+def test_read_file1():
+    with get_tmp_dir() as t:
+        with get_proc(t) as p:
+            reply = p.stdout.readline().strip()
+            assert reply == 'READY'
+
+            msg = 'SET {}'.format(_sysfs.encode(TEST_ROOT))
+            print(msg, file=p.stdin, flush=True)
+            reply = p.stdout.readline().strip()
+            assert reply == 'OK'
+
+            with open(os.path.join(t, 'file1'), 'rb') as f:
+                data = f.read()
+                assert data == ALL_BYTES

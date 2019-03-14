@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2e96d9b2ec5a5e63a72203e938a01fb9d0d8a7bc482d7285f0a2434d42b0c689"
+            "sha256": "249ce28ef81eed45c54d487ff4ba8d7f60b0831746b0e7ac8ec816f110af7e1a"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -18,7 +18,7 @@
     "default": {
         "fuse-python": {
             "git": "https://github.com/dlech/python-fuse.git",
-            "ref": "bd344dbb47241b69d82a54f3bcf1e7180c206675"
+            "ref": "5aae6e8046227c6103e98e8969a20d75f2fedbff"
         }
     },
     "develop": {

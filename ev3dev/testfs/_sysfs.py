@@ -141,6 +141,22 @@ class SysfsFuse(fuse.Fuse):
                 match(os.O_RDWR, 0o060)):
             return -EACCES
 
+    def read(self, path, size, offset):
+        item = self._get_item(path)
+        if not item:
+            return -ENOENT
+
+        contents = decode_bytes(item['contents'])
+        slen = len(contents)
+        if offset < slen:
+            if offset + size > slen:
+                size = slen - offset
+            buf = contents[offset:offset+size]
+        else:
+            buf = b''
+
+        return buf
+
 
 if __name__ == '__main__':
     f = SysfsFuse()

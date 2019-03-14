@@ -10,7 +10,7 @@ rope = "*"
 pep8 = "*"
 
 [packages]
-fuse-python = {git = "https://github.com/dlech/python-fuse.git",ref = "v0.3.1.dev1"}
+fuse-python = {git = "https://github.com/dlech/python-fuse.git",ref = "v0.3.1.dev2"}
 
 [requires]
 python_version = "3.6"
