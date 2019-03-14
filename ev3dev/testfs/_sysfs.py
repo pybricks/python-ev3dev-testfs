@@ -12,8 +12,6 @@ from stat import S_IFDIR, S_IFREG
 
 fuse.fuse_python_api = (0, 2)
 
-_CLASS_PATH = '/class'
-
 _ROOT = {
     'type': 'directory',
     'name': '/',
