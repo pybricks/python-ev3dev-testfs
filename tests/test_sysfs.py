@@ -13,6 +13,8 @@ import pytest
 
 from ev3dev.testfs import _sysfs
 
+ALL_BYTES = bytes((x for x in range(256)))
+
 TEST_ROOT = {
     'name': '/',
     'type': 'directory',
@@ -35,10 +37,11 @@ TEST_ROOT = {
             'name': 'file1',
             'type': 'file',
             'mode': 0o644,
-            'contents': _sysfs.encode('test 123'),
+            'contents': _sysfs.encode_bytes(ALL_BYTES),
         },
     ],
 }
+
 
 @contextmanager
 def get_tmp_dir() -> str:
@@ -104,6 +107,13 @@ def test_encode_decode():
     assert type(enc) is str
     dec = _sysfs.decode(enc)
     assert dec == SMALL_DICT
+
+
+def test_encode_decode_bytes():
+    enc = _sysfs.encode_bytes(ALL_BYTES)
+    assert type(enc) is str
+    dec = _sysfs.decode_bytes(enc)
+    assert dec == ALL_BYTES
 
 
 def test_wait_for_mount_timeout():

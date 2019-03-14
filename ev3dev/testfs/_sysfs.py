@@ -28,6 +28,16 @@ def decode(obj: str) -> dict:
     return json.loads(base64.b64decode(obj.encode()).decode())
 
 
+def encode_bytes(b: bytes) -> str:
+    """Encode a bytes-like object into a unicode string object."""
+    return base64.b64encode(b).decode()
+
+
+def decode_bytes(s: str) -> bytes:
+    """Decode a bytes-like object from a unicode string object."""
+    return base64.b64decode(s.encode())
+
+
 class SysfsStat(fuse.Stat):
     def __init__(self):
         self.st_mode = 0
