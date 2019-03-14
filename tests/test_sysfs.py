@@ -1,4 +1,6 @@
+import copy
 import os
+import stat
 import sys
 import time
 
@@ -7,6 +9,33 @@ from subprocess import Popen, PIPE
 from tempfile import mkdtemp
 
 from ev3dev.testfs import _sysfs
+
+TEST_ROOT = {
+    'name': '/',
+    'type': 'directory',
+    'mode': 0o755,
+    'contents': [
+        {
+            'name': 'dir1',
+            'type': 'directory',
+            'mode': 0o755,
+            'contents': [
+                {
+                    'name': 'dir2',
+                    'type': 'directory',
+                    'mode': 0o755,
+                    'contents': [],
+                }
+            ],
+        },
+        {
+            'name': 'file1',
+            'type': 'file',
+            'mode': 0o644,
+            'contents': '',
+        },
+    ],
+}
 
 
 @contextmanager
@@ -80,9 +109,84 @@ def test_wait_for_mount_timeout():
     assert time.monotonic() - start_time > TIMEOUT
 
 
+def test_get_item():
+    sysfs = _sysfs.SysfsFuse()
+    sysfs._root = dict(TEST_ROOT)
+
+    item = sysfs._get_item('/')
+    assert item['name'] == '/'
+
+    item = sysfs._get_item('/dir1')
+    assert item['name'] == 'dir1'
+
+    item = sysfs._get_item('/dir1/dir2')
+    assert item['name'] == 'dir2'
+
+    item = sysfs._get_item('/dir1/dir2/dir3')
+    assert item is None
+
+
+def test_getattr():
+    sysfs = _sysfs.SysfsFuse()
+    sysfs._root = copy.deepcopy(TEST_ROOT)
+
+    attr = sysfs.getattr('/')
+    assert stat.S_IFMT(attr.st_mode) == stat.S_IFDIR
+    assert stat.S_IMODE(attr.st_mode) == 0o755
+
+    attr = sysfs.getattr('/dir1')
+    assert stat.S_IFMT(attr.st_mode) == stat.S_IFDIR
+    assert stat.S_IMODE(attr.st_mode) == 0o755
+
+    attr = sysfs.getattr('/file1')
+    assert stat.S_IFMT(attr.st_mode) == stat.S_IFREG
+    assert stat.S_IMODE(attr.st_mode) == 0o644
+
+
+def test_readdir():
+    sysfs = _sysfs.SysfsFuse()
+    sysfs._root = copy.deepcopy(TEST_ROOT)
+
+    names = [x.name for x in sysfs.readdir('/', 0)]
+    assert '.' in names
+    assert '..' in names
+    assert 'dir1' in names
+    assert 'file1' in names
+    assert len(names) == 4
+
+    names = [x.name for x in sysfs.readdir('/dir1', 0)]
+    assert '.' in names
+    assert '..' in names
+    assert 'dir2' in names
+    assert len(names) == 3
+
+
+###############################################################################
+# The tests below actually setup a FUSE mount and call _sysfs as a subprocess
+###############################################################################
+
+
+def test_stat_class():
+    with get_tmp_dir() as t:
+        with get_proc(t) as p:
+            st = os.stat(os.path.join(t, 'class'))
+            assert stat.S_IFMT(st.st_mode) == stat.S_IFDIR
+            assert stat.S_IMODE(st.st_mode) == 0o755
+
+
 def test_ls_root():
     with get_tmp_dir() as t:
         with get_proc(t) as p:
             ls = os.listdir(t)
             assert 'class' in ls
             assert len(ls) == 1
+
+
+def test_ls_class():
+    with get_tmp_dir() as t:
+        with get_proc(t) as p:
+            ls = os.listdir(os.path.join(t, 'class'))
+            assert 'lego-port' in ls
+            assert 'lego-sensor' in ls
+            assert 'tacho-motor' in ls
+            assert len(ls) == 3
