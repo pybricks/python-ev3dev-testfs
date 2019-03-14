@@ -7,7 +7,7 @@ import threading
 
 import fuse
 
-from errno import ENOENT
+from errno import EACCES, ENOENT
 from stat import S_IFDIR, S_IFREG
 
 fuse.fuse_python_api = (0, 2)
@@ -133,6 +133,24 @@ class SysfsFuse(fuse.Fuse):
         names = (x['name'] for x in item['contents'])
         for r in itertools.chain(['.', '..'], names):
             yield fuse.Direntry(r)
+
+    def open(self, path, flags):
+        item = self._get_item(path)
+        if not item:
+            return -ENOENT
+
+        # Like real sysfs, the access mode must match the file permissions. To
+        # make things easy, we are just looking at the group bits since that is
+        # what matters in ev3dev.
+
+        def match(accmode, mode_mask):
+            return ((flags & os.O_ACCMODE) == accmode and
+                    (item['mode'] & mode_mask) == mode_mask)
+
+        if not (match(os.O_RDONLY, 0o040) or match(os.O_WRONLY, 0o020) or
+                match(os.O_RDWR, 0o060)):
+            return -EACCES
+
 
 if __name__ == '__main__':
     f = SysfsFuse()

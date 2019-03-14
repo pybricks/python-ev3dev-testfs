@@ -1,5 +1,6 @@
 import base64
 import copy
+import errno
 import json
 import os
 import stat
@@ -9,6 +10,8 @@ import time
 from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from tempfile import mkdtemp
+
+import pytest
 
 from ev3dev.testfs import _sysfs
 
@@ -193,6 +196,40 @@ def test_readdir():
     assert len(names) == 3
 
 
+def test_open():
+    sysfs = _sysfs.SysfsFuse()
+    sysfs._root = copy.deepcopy(TEST_ROOT)
+
+    assert sysfs._root['contents'][1]['name'] == 'file1'
+
+    # read/write file can be opened any which way
+    sysfs._root['contents'][1]['mode'] = 0o666
+    err = sysfs.open('/file1', os.O_RDONLY)
+    assert err is None
+    err = sysfs.open('/file1', os.O_WRONLY)
+    assert err is None
+    err = sysfs.open('/file1', os.O_RDWR)
+    assert err is None
+
+    # read-only file can only be opened for reading
+    sysfs._root['contents'][1]['mode'] = 0o444
+    err = sysfs.open('/file1', os.O_RDONLY)
+    assert err is None
+    err = sysfs.open('/file1', os.O_WRONLY)
+    assert err == -errno.EACCES
+    err = sysfs.open('/file1', os.O_RDWR)
+    assert err == -errno.EACCES
+
+    # write-only file can only be opened for writing
+    sysfs._root['contents'][1]['mode'] = 0o222
+    err = sysfs.open('/file1', os.O_RDONLY)
+    assert err == -errno.EACCES
+    err = sysfs.open('/file1', os.O_WRONLY)
+    assert err is None
+    err = sysfs.open('/file1', os.O_RDWR)
+    assert err == -errno.EACCES
+
+
 ###############################################################################
 # The tests below actually setup a FUSE mount and call _sysfs as a subprocess
 ###############################################################################
@@ -222,3 +259,37 @@ def test_ls_class():
             assert 'lego-sensor' in ls
             assert 'tacho-motor' in ls
             assert len(ls) == 3
+
+
+def test_open_class():
+    with get_tmp_dir() as t:
+        with get_proc(t) as p:
+            with pytest.raises(OSError) as exc_info:
+                with open(os.path.join(t, 'class')) as f:
+                    pass
+            assert exc_info.value.errno == errno.EISDIR
+
+
+def test_open_file1():
+    with get_tmp_dir() as t:
+        with get_proc(t) as p:
+            reply = p.stdout.readline().strip()
+            assert reply == 'READY'
+
+            msg = 'SET {}'.format(encode(TEST_ROOT))
+            print(msg, file=p.stdin, flush=True)
+            reply = p.stdout.readline().strip()
+            assert reply == 'OK'
+
+            with open(os.path.join(t, 'file1'), 'r') as f:
+                pass
+
+            with pytest.raises(OSError) as exc_info:
+                with open(os.path.join(t, 'file1'), 'r+') as f:
+                    pass
+            assert exc_info.value.errno == errno.EACCES
+
+            with pytest.raises(OSError) as exc_info:
+                with open(os.path.join(t, 'file1'), 'w') as f:
+                    pass
+            assert exc_info.value.errno == errno.EACCES
