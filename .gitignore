@@ -1,3 +1,6 @@
+__pycache__/
+.pytest_cache/
 build/
 dist/
 MANIFEST
+*.egg-info
