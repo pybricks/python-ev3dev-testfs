@@ -1,4 +1,6 @@
+import base64
 import copy
+import json
 import os
 import stat
 import sys
@@ -36,6 +38,14 @@ TEST_ROOT = {
         },
     ],
 }
+
+
+def encode(obj: dict) -> str:
+    return base64.b64encode(json.dumps(obj).encode()).decode()
+
+
+def decode(obj: str) -> dict:
+    return json.loads(base64.b64decode(obj.encode()).decode())
 
 
 @contextmanager
@@ -87,13 +97,21 @@ def get_proc(mount_point: str) -> Popen:
         '-f',
         '-o', 'auto_unmount'
     ]
-    p = Popen(args, stdin=PIPE, stdout=PIPE)
+    p = Popen(args, stdin=PIPE, stdout=PIPE, universal_newlines=True)
     try:
         wait_for_mount(mount_point)
         yield p
     finally:
         p.terminate()
         p.wait()
+
+
+def test_encode_decode():
+    SMALL_DICT = {'key': 'value'}
+    enc = encode(SMALL_DICT)
+    assert type(enc) is str
+    dec = decode(enc)
+    assert dec == SMALL_DICT
 
 
 def test_wait_for_mount_timeout():
@@ -107,6 +125,20 @@ def test_wait_for_mount_timeout():
 
     assert timeout_error
     assert time.monotonic() - start_time > TIMEOUT
+
+
+def test_parse_line():
+    SMALL_DICT = {'key': 'value'}
+    sysfs = _sysfs.SysfsFuse()
+
+    sysfs._root = copy.deepcopy(SMALL_DICT)
+    reply = sysfs._parse_line("GET")
+    assert reply.split() == ['OK', 'eyJrZXkiOiAidmFsdWUifQ==']
+
+    sysfs._root = copy.deepcopy(TEST_ROOT)
+    reply = sysfs._parse_line("SET eyJrZXkiOiAidmFsdWUifQ==")
+    assert reply.split() == ['OK']
+    assert sysfs._root == SMALL_DICT
 
 
 def test_get_item():

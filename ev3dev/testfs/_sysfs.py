@@ -1,6 +1,9 @@
+import base64
 import itertools
+import json
 import os
 import sys
+import threading
 
 import fuse
 
@@ -63,6 +66,27 @@ class SysfsFuse(fuse.Fuse):
     def __init__(self):
         super().__init__()
         self._root = dict(_ROOT)
+        self._thread = threading.Thread(target=self._run)
+        self._thread.daemon = True
+
+    def _parse_line(self, line: str) -> str:
+        try:
+            line = line.split()
+            if line[0] == 'GET':
+                data = base64.b64encode(json.dumps(self._root).encode())
+                return 'OK {}'.format(data.decode())
+            if line[0] == 'SET':
+                self._root = json.loads(base64.b64decode(line[1]))
+                return 'OK'
+            raise ValueError('Unknown command: {}'.format(line[0]))
+        except Exception as ex:
+            return 'ERR {}'.format(ex)
+
+    def _run(self):
+        print('READY', flush=True)
+        while True:
+            line = input()
+            print(self._parse_line(line), flush=True)
 
     def _get_item(self, path: str) -> dict:
         current = None
@@ -86,6 +110,10 @@ class SysfsFuse(fuse.Fuse):
                 return None
 
         return current
+
+    def main(self):
+        self._thread.start()
+        super().main()
 
     def getattr(self, path):
         item = self._get_item(path)
