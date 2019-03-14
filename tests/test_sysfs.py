@@ -167,14 +167,17 @@ def test_getattr():
     attr = sysfs.getattr('/')
     assert stat.S_IFMT(attr.st_mode) == stat.S_IFDIR
     assert stat.S_IMODE(attr.st_mode) == 0o755
+    assert attr.st_size == 0
 
     attr = sysfs.getattr('/dir1')
     assert stat.S_IFMT(attr.st_mode) == stat.S_IFDIR
     assert stat.S_IMODE(attr.st_mode) == 0o755
+    assert attr.st_size == 0
 
     attr = sysfs.getattr('/file1')
     assert stat.S_IFMT(attr.st_mode) == stat.S_IFREG
     assert stat.S_IMODE(attr.st_mode) == 0o644
+    assert attr.st_size == 4096
 
 
 def test_readdir():

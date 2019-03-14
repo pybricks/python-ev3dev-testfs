@@ -114,6 +114,7 @@ class SysfsFuse(fuse.Fuse):
             st.st_mode |= S_IFDIR
         elif item['type'] == 'file':
             st.st_mode |= S_IFREG
+            st.st_size = 4096  # all sysfs files are this size
         st.st_mode |= item['mode']
         return st
 
