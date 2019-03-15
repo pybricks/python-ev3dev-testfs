@@ -30,6 +30,17 @@ class Sysfs():
         mount_point
             The absolute path to an existing directory where the filesystem
             will be mounted.
+
+        Notes
+        -----
+        This class is intended only to be used as a context manager.
+
+        Example
+        -------
+        ::
+
+            with Sysfs(path) as sysfs:
+                # do stuff with filesystem
         """
         args = [
             sys.executable, '-m', 'ev3dev.testfs._sysfs',
