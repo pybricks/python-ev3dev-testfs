@@ -1,17 +1,17 @@
+import base64
 import json
 import time
-
-from ..testfs import encode_bytes, decode_bytes
 
 
 def encode_dict(obj: dict) -> str:
     """Encode a dictionary to a base64 encoded json string."""
-    return encode_bytes(json.dumps(obj, separators=(',', ':')).encode())
+    dumps = json.dumps(obj, separators=(',', ':'))
+    return base64.b64encode(dumps.encode()).decode()
 
 
 def decode_dict(obj: str) -> dict:
     """Decode a base64 encoded json string to a dictionary."""
-    return json.loads(decode_bytes(obj))
+    return json.loads(base64.b64decode(obj.encode()))
 
 
 def wait_for_mount(mount_point: str, timeout: float = 0.5):
