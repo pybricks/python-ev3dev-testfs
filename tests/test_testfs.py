@@ -69,7 +69,7 @@ def test_sysfs_stat_dir1():
 
 def test_sysfs_ls_root():
     with get_tmp_dir() as t:
-        with Sysfs(t) as sysfs:
+        with Sysfs(t):
             ls = os.listdir(t)
             assert len(ls) == 0
 
@@ -90,7 +90,7 @@ def test_sysfs_open_dir1():
             sysfs.tree = TEST_ROOT
 
             with pytest.raises(OSError) as exc_info:
-                with open(os.path.join(t, 'dir1')) as f:
+                with open(os.path.join(t, 'dir1')):
                     pass
             assert exc_info.value.errno == errno.EISDIR
 
@@ -100,16 +100,16 @@ def test_sysfs_open_file1():
         with Sysfs(t) as sysfs:
             sysfs.tree = TEST_ROOT
 
-            with open(os.path.join(t, 'file1'), 'r') as f:
+            with open(os.path.join(t, 'file1'), 'r'):
                 pass
 
             with pytest.raises(OSError) as exc_info:
-                with open(os.path.join(t, 'file1'), 'r+') as f:
+                with open(os.path.join(t, 'file1'), 'r+'):
                     pass
             assert exc_info.value.errno == errno.EACCES
 
             with pytest.raises(OSError) as exc_info:
-                with open(os.path.join(t, 'file1'), 'w') as f:
+                with open(os.path.join(t, 'file1'), 'w'):
                     pass
             assert exc_info.value.errno == errno.EACCES
 

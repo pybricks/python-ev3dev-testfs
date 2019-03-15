@@ -53,7 +53,7 @@ class Sysfs():
     @property
     def tree(self) -> dict:
         """Gets and sets a dictionary describing the filesystem structure."""
-        msg = 'GET {}'.format(encode_dict(d))
+        msg = 'GET'
         print(msg, file=self._p.stdin, flush=True)
         reply = self._p.stdout.readline().strip().split()
         if reply[0] != 'OK':
