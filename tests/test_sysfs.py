@@ -91,6 +91,18 @@ def test_getattr():
     assert attr.st_size == 4096
 
 
+def test_getxattr():
+    sysfs = SysfsFuse()
+    attr = sysfs.getxattr('/', 'some.attr', 0)
+    assert attr == -errno.ENOTSUP
+
+
+def test_setxattr():
+    sysfs = SysfsFuse()
+    attr = sysfs.setxattr('/', 'some.attr', 'value', 0)
+    assert attr == -errno.ENOTSUP
+
+
 def test_readdir():
     sysfs = SysfsFuse()
     sysfs._root = copy.deepcopy(TEST_ROOT)

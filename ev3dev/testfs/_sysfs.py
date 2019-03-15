@@ -4,7 +4,7 @@ import threading
 
 import fuse
 
-from errno import EACCES, ENOENT
+from errno import EACCES, ENOENT, ENOTSUP
 from stat import S_IFDIR, S_IFREG
 
 from ..testfs import decode_bytes
@@ -99,6 +99,12 @@ class SysfsFuse(fuse.Fuse):
             st.st_size = 4096  # all sysfs files are this size
         st.st_mode |= item['mode']
         return st
+
+    def getxattr(self, path, name, size):
+        return -ENOTSUP
+
+    def setxattr(self, path, name, value, flags):
+        return -ENOTSUP
 
     def readdir(self, path, offset):
         item = self._get_item(path)
