@@ -6,5 +6,7 @@
     "python.unitTest.pyTestEnabled": true,
     "python.linting.pep8Enabled": false,
     "python.linting.flake8Enabled": true,
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+	"restructuredtext.confPath": "${workspaceFolder}/docs",
+	"restructuredtext.builtDocumentationPath": "${workspaceFolder}/build/sphinx/html"
 }
