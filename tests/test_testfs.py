@@ -57,6 +57,14 @@ def test_encode_decode_bytes():
     assert dec == ALL_BYTES
 
 
+def test_sysfs_private_read_timeout():
+    with get_tmp_dir() as t:
+        with Sysfs(t) as sysfs:
+            with pytest.raises(TimeoutError) as exc_info:
+                sysfs._read()
+            assert exc_info.type == TimeoutError
+
+
 def test_sysfs_stat_dir1():
     with get_tmp_dir() as t:
         with Sysfs(t) as sysfs:

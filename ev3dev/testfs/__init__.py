@@ -1,6 +1,7 @@
 import base64
 import sys
 
+from select import poll, POLLIN
 from subprocess import Popen, PIPE
 
 from ._util import encode_dict, decode_dict, wait_for_mount
@@ -39,9 +40,11 @@ class Sysfs():
         ]
         self._mount_point = mount_point
         self._p = Popen(args, stdin=PIPE, stdout=PIPE, universal_newlines=True)
+        self._poll = poll()
+        self._poll.register(self._p.stdout.fileno(), POLLIN)
 
     def __enter__(self):
-        if self._p.stdout.readline().strip() != 'READY':
+        if self._read() != 'READY':
             raise IOError('remote process is not ready')
         wait_for_mount(self._mount_point)
         return self
@@ -50,12 +53,22 @@ class Sysfs():
         self._p.terminate()
         self._p.wait()
 
+    def _read(self) -> str:
+        for fd, event in self._poll.poll(500):
+            return self._p.stdout.readline().strip()
+        else:
+            raise TimeoutError()
+
+    def _write(self, msg: str):
+        # using the built-in print function takes care of adding a newline
+        # and helps prevent deadlocks
+        print(msg, file=self._p.stdin, flush=True)
+
     @property
     def tree(self) -> dict:
         """Gets and sets a dictionary describing the filesystem structure."""
-        msg = 'GET'
-        print(msg, file=self._p.stdin, flush=True)
-        reply = self._p.stdout.readline().strip().split()
+        self._write('GET')
+        reply = self._read().split()
         if reply[0] != 'OK':
             # TODO: get error message from reply
             raise IOError()
@@ -63,9 +76,8 @@ class Sysfs():
 
     @tree.setter
     def tree(self, d: dict):
-        msg = 'SET {}'.format(encode_dict(d))
-        print(msg, file=self._p.stdin, flush=True)
-        reply = self._p.stdout.readline().strip()
+        self._write('SET {}'.format(encode_dict(d)))
+        reply = self._read()
         if reply != 'OK':
             # TODO: get error message from reply
             raise IOError()
