@@ -3,7 +3,6 @@ import errno
 import os
 import stat
 import sys
-import time
 
 from contextlib import contextmanager
 from subprocess import Popen, PIPE
@@ -11,9 +10,11 @@ from tempfile import mkdtemp
 
 import pytest
 
-from ev3dev.testfs import _sysfs
+from ev3dev.testfs import encode_bytes, decode_bytes
+from ev3dev.testfs._sysfs import SysfsFuse
+from ev3dev.testfs._util import encode_dict, decode_dict, wait_for_mount
 
-ALL_BYTES = bytes((x for x in range(256)))
+ALL_BYTES = bytes(range(256))
 
 TEST_ROOT = {
     'name': '/',
@@ -37,7 +38,7 @@ TEST_ROOT = {
             'name': 'file1',
             'type': 'file',
             'mode': 0o644,
-            'contents': _sysfs.encode_bytes(ALL_BYTES),
+            'contents': encode_bytes(ALL_BYTES),
         },
     ],
 }
@@ -50,37 +51,6 @@ def get_tmp_dir() -> str:
         yield t
     finally:
         os.rmdir(t)
-
-
-def wait_for_mount(mount_point: str, timeout: float = 0.5):
-    """Wait for the mount point to appear.
-
-    Parameters
-    ----------
-        mount_point
-            The absolute path to the mount point.
-        timeout
-            Timeout in seconds
-
-    Raises
-    ------
-        TimeoutError
-            If the `timeout` is reached before the mount point is seen.
-    """
-    DELAY = 0.01  # delay in seconds between checks
-    MAX_COUNT = timeout // DELAY
-    count = 0
-    while True:
-        with open('/proc/mounts', 'r') as f:
-            for line in f.readlines():
-                if not line:
-                    break
-                if line.find(mount_point) > -1:
-                    return
-            if count > MAX_COUNT:
-                raise TimeoutError('Waiting for mount took too long')
-            count += 1
-            time.sleep(DELAY)
 
 
 @contextmanager
@@ -101,41 +71,16 @@ def get_proc(mount_point: str) -> Popen:
         p.wait()
 
 
-def test_encode_decode():
-    SMALL_DICT = {'key': 'value'}
-    enc = _sysfs.encode(SMALL_DICT)
-    assert type(enc) is str
-    dec = _sysfs.decode(enc)
-    assert dec == SMALL_DICT
-
-
-def test_encode_decode_bytes():
-    enc = _sysfs.encode_bytes(ALL_BYTES)
-    assert type(enc) is str
-    dec = _sysfs.decode_bytes(enc)
-    assert dec == ALL_BYTES
-
-
-def test_wait_for_mount_timeout():
-    TIMEOUT = 0.25
-    timeout_error = False
-    start_time = time.monotonic()
-    try:
-        wait_for_mount('---------', timeout=TIMEOUT)
-    except TimeoutError:
-        timeout_error = True
-
-    assert timeout_error
-    assert time.monotonic() - start_time > TIMEOUT
-
-
 def test_parse_line():
     SMALL_DICT = {'key': 'value'}
-    sysfs = _sysfs.SysfsFuse()
+    sysfs = SysfsFuse()
 
     sysfs._root = copy.deepcopy(SMALL_DICT)
     reply = sysfs._parse_line("GET")
-    assert reply.split() == ['OK', 'eyJrZXkiOiAidmFsdWUifQ==']
+    split = reply.split()
+    assert len(split) == 2
+    assert split[0] == 'OK'
+    assert decode_dict(split[1]) == SMALL_DICT
 
     sysfs._root = copy.deepcopy(TEST_ROOT)
     reply = sysfs._parse_line("SET eyJrZXkiOiAidmFsdWUifQ==")
@@ -144,7 +89,7 @@ def test_parse_line():
 
 
 def test_get_item():
-    sysfs = _sysfs.SysfsFuse()
+    sysfs = SysfsFuse()
     sysfs._root = dict(TEST_ROOT)
 
     item = sysfs._get_item('/')
@@ -161,7 +106,7 @@ def test_get_item():
 
 
 def test_getattr():
-    sysfs = _sysfs.SysfsFuse()
+    sysfs = SysfsFuse()
     sysfs._root = copy.deepcopy(TEST_ROOT)
 
     attr = sysfs.getattr('/')
@@ -181,7 +126,7 @@ def test_getattr():
 
 
 def test_readdir():
-    sysfs = _sysfs.SysfsFuse()
+    sysfs = SysfsFuse()
     sysfs._root = copy.deepcopy(TEST_ROOT)
 
     names = [x.name for x in sysfs.readdir('/', 0)]
@@ -199,7 +144,7 @@ def test_readdir():
 
 
 def test_open():
-    sysfs = _sysfs.SysfsFuse()
+    sysfs = SysfsFuse()
     sysfs._root = copy.deepcopy(TEST_ROOT)
 
     assert sysfs._root['contents'][1]['name'] == 'file1'
@@ -233,7 +178,7 @@ def test_open():
 
 
 def test_read():
-    sysfs = _sysfs.SysfsFuse()
+    sysfs = SysfsFuse()
     sysfs._root = copy.deepcopy(TEST_ROOT)
 
     ret = sysfs.read('/file1', 4096, 0)
@@ -253,7 +198,7 @@ def test_stat_dir1():
             reply = p.stdout.readline().strip()
             assert reply == 'READY'
 
-            msg = 'SET {}'.format(_sysfs.encode(TEST_ROOT))
+            msg = 'SET {}'.format(encode_dict(TEST_ROOT))
             print(msg, file=p.stdin, flush=True)
             reply = p.stdout.readline().strip()
             assert reply == 'OK'
@@ -276,7 +221,7 @@ def test_ls_dir1():
             reply = p.stdout.readline().strip()
             assert reply == 'READY'
 
-            msg = 'SET {}'.format(_sysfs.encode(TEST_ROOT))
+            msg = 'SET {}'.format(encode_dict(TEST_ROOT))
             print(msg, file=p.stdin, flush=True)
             reply = p.stdout.readline().strip()
             assert reply == 'OK'
@@ -292,7 +237,7 @@ def test_open_dir1():
             reply = p.stdout.readline().strip()
             assert reply == 'READY'
 
-            msg = 'SET {}'.format(_sysfs.encode(TEST_ROOT))
+            msg = 'SET {}'.format(encode_dict(TEST_ROOT))
             print(msg, file=p.stdin, flush=True)
             reply = p.stdout.readline().strip()
             assert reply == 'OK'
@@ -309,7 +254,7 @@ def test_open_file1():
             reply = p.stdout.readline().strip()
             assert reply == 'READY'
 
-            msg = 'SET {}'.format(_sysfs.encode(TEST_ROOT))
+            msg = 'SET {}'.format(encode_dict(TEST_ROOT))
             print(msg, file=p.stdin, flush=True)
             reply = p.stdout.readline().strip()
             assert reply == 'OK'
@@ -334,7 +279,7 @@ def test_read_file1():
             reply = p.stdout.readline().strip()
             assert reply == 'READY'
 
-            msg = 'SET {}'.format(_sysfs.encode(TEST_ROOT))
+            msg = 'SET {}'.format(encode_dict(TEST_ROOT))
             print(msg, file=p.stdin, flush=True)
             reply = p.stdout.readline().strip()
             assert reply == 'OK'

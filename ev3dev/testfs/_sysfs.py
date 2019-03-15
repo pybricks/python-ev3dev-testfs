@@ -1,6 +1,4 @@
-import base64
 import itertools
-import json
 import os
 import sys
 import threading
@@ -10,6 +8,9 @@ import fuse
 from errno import EACCES, ENOENT
 from stat import S_IFDIR, S_IFREG
 
+from ..testfs import decode_bytes
+from ._util import encode_dict, decode_dict
+
 fuse.fuse_python_api = (0, 2)
 
 _ROOT = {
@@ -18,24 +19,6 @@ _ROOT = {
     'mode': 0o555,
     'contents': [],
 }
-
-
-def encode(obj: dict) -> str:
-    return base64.b64encode(json.dumps(obj).encode()).decode()
-
-
-def decode(obj: str) -> dict:
-    return json.loads(base64.b64decode(obj.encode()).decode())
-
-
-def encode_bytes(b: bytes) -> str:
-    """Encode a bytes-like object into a unicode string object."""
-    return base64.b64encode(b).decode()
-
-
-def decode_bytes(s: str) -> bytes:
-    """Decode a bytes-like object from a unicode string object."""
-    return base64.b64decode(s.encode())
 
 
 class SysfsStat(fuse.Stat):
@@ -63,9 +46,9 @@ class SysfsFuse(fuse.Fuse):
         try:
             line = line.split()
             if line[0] == 'GET':
-                return 'OK {}'.format(encode(self._root))
+                return 'OK {}'.format(encode_dict(self._root))
             if line[0] == 'SET':
-                self._root = decode(line[1])
+                self._root = decode_dict(line[1])
                 return 'OK'
             raise ValueError('Unknown command: {}'.format(line[0]))
         except Exception as ex:
