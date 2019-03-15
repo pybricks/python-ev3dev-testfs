@@ -36,6 +36,12 @@ TEST_ROOT = {
             'mode': 0o644,
             'contents': encode_bytes(ALL_BYTES),
         },
+        {
+            'name': 'file2',
+            'type': 'file',
+            'mode': 0o666,
+            'contents': '',
+        },
     ],
 }
 
@@ -130,3 +136,17 @@ def test_sysfs_read_file1():
             with open(os.path.join(t, 'file1'), 'rb') as f:
                 data = f.read()
                 assert data == ALL_BYTES
+
+
+def test_sysfs_write_file2():
+    with get_tmp_dir() as t:
+        with Sysfs(t) as sysfs:
+            sysfs.tree = TEST_ROOT
+
+            with open(os.path.join(t, 'file2'), 'wb', buffering=0) as f:
+                written = f.write(b'test')
+                assert written == 4
+                file2 = sysfs.tree['contents'][2]
+                assert file2['name'] == 'file2'
+                assert decode_bytes(file2['written']['buf']) == b'test'
+                assert file2['written']['offset'] == 0

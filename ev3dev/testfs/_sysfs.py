@@ -7,7 +7,7 @@ import fuse
 from errno import EACCES, ENOENT, ENOTSUP
 from stat import S_IFDIR, S_IFREG
 
-from ..testfs import decode_bytes
+from ..testfs import encode_bytes, decode_bytes
 from ._util import encode_dict, decode_dict
 
 fuse.fuse_python_api = (0, 2)
@@ -144,6 +144,28 @@ class SysfsFuse(fuse.Fuse):
             buf = b''
 
         return buf
+
+    def write(self, path, buf, offset):
+        item = self._get_item(path)
+        if not item:
+            return -ENOENT
+
+        item['written'] = {
+            'buf': encode_bytes(buf),
+            'offset': offset,
+        }
+
+        return len(buf)
+
+    def truncate(self, path, size):
+        item = self._get_item(path)
+        if not item:
+            return -ENOENT
+
+        # truncate doesn't do anything in sysfs
+
+    def flush(self, path):
+        pass
 
 
 if __name__ == '__main__':

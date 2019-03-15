@@ -3,7 +3,7 @@ import errno
 import os
 import stat
 
-from ev3dev.testfs import encode_bytes
+from ev3dev.testfs import encode_bytes, decode_bytes
 from ev3dev.testfs._sysfs import SysfsFuse
 from ev3dev.testfs._util import decode_dict
 
@@ -162,4 +162,20 @@ def test_read():
     ret = sysfs.read('/file1', 4096, 0)
     assert ret == ALL_BYTES
     ret = sysfs.read('/file0', 4096, 0)
+    assert ret == -errno.ENOENT
+
+
+def test_write():
+    sysfs = SysfsFuse()
+    sysfs._root = copy.deepcopy(TEST_ROOT)
+
+    item = sysfs._root['contents'][1]
+    assert item['name'] == 'file1'
+
+    ret = sysfs.write('/file1', b'test', 10)
+    assert ret == 4
+    assert decode_bytes(item['written']['buf']) == b'test'
+    assert item['written']['offset'] == 10
+
+    ret = sysfs.write('/file0', b'test', 0)
     assert ret == -errno.ENOENT
