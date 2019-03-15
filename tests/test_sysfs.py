@@ -2,17 +2,10 @@ import copy
 import errno
 import os
 import stat
-import sys
 
-from contextlib import contextmanager
-from subprocess import Popen, PIPE
-from tempfile import mkdtemp
-
-import pytest
-
-from ev3dev.testfs import encode_bytes, decode_bytes
+from ev3dev.testfs import encode_bytes
 from ev3dev.testfs._sysfs import SysfsFuse
-from ev3dev.testfs._util import encode_dict, decode_dict, wait_for_mount
+from ev3dev.testfs._util import decode_dict
 
 ALL_BYTES = bytes(range(256))
 
@@ -42,33 +35,6 @@ TEST_ROOT = {
         },
     ],
 }
-
-
-@contextmanager
-def get_tmp_dir() -> str:
-    t = mkdtemp()
-    try:
-        yield t
-    finally:
-        os.rmdir(t)
-
-
-@contextmanager
-def get_proc(mount_point: str) -> Popen:
-    args = [
-        sys.executable, '-m', 'ev3dev.testfs._sysfs',
-        mount_point,
-        # '-d',
-        '-f',
-        '-o', 'auto_unmount'
-    ]
-    p = Popen(args, stdin=PIPE, stdout=PIPE, universal_newlines=True)
-    try:
-        wait_for_mount(mount_point)
-        yield p
-    finally:
-        p.terminate()
-        p.wait()
 
 
 def test_parse_line():
@@ -185,105 +151,3 @@ def test_read():
     assert ret == ALL_BYTES
     ret = sysfs.read('/file0', 4096, 0)
     assert ret == -errno.ENOENT
-
-
-###############################################################################
-# The tests below actually setup a FUSE mount and call _sysfs as a subprocess
-###############################################################################
-
-
-def test_stat_dir1():
-    with get_tmp_dir() as t:
-        with get_proc(t) as p:
-            reply = p.stdout.readline().strip()
-            assert reply == 'READY'
-
-            msg = 'SET {}'.format(encode_dict(TEST_ROOT))
-            print(msg, file=p.stdin, flush=True)
-            reply = p.stdout.readline().strip()
-            assert reply == 'OK'
-
-            st = os.stat(os.path.join(t, 'dir1'))
-            assert stat.S_IFMT(st.st_mode) == stat.S_IFDIR
-            assert stat.S_IMODE(st.st_mode) == 0o755
-
-
-def test_ls_root():
-    with get_tmp_dir() as t:
-        with get_proc(t) as p:
-            ls = os.listdir(t)
-            assert len(ls) == 0
-
-
-def test_ls_dir1():
-    with get_tmp_dir() as t:
-        with get_proc(t) as p:
-            reply = p.stdout.readline().strip()
-            assert reply == 'READY'
-
-            msg = 'SET {}'.format(encode_dict(TEST_ROOT))
-            print(msg, file=p.stdin, flush=True)
-            reply = p.stdout.readline().strip()
-            assert reply == 'OK'
-
-            ls = os.listdir(os.path.join(t, 'dir1'))
-            assert 'dir2' in ls
-            assert len(ls) == 1
-
-
-def test_open_dir1():
-    with get_tmp_dir() as t:
-        with get_proc(t) as p:
-            reply = p.stdout.readline().strip()
-            assert reply == 'READY'
-
-            msg = 'SET {}'.format(encode_dict(TEST_ROOT))
-            print(msg, file=p.stdin, flush=True)
-            reply = p.stdout.readline().strip()
-            assert reply == 'OK'
-
-            with pytest.raises(OSError) as exc_info:
-                with open(os.path.join(t, 'dir1')) as f:
-                    pass
-            assert exc_info.value.errno == errno.EISDIR
-
-
-def test_open_file1():
-    with get_tmp_dir() as t:
-        with get_proc(t) as p:
-            reply = p.stdout.readline().strip()
-            assert reply == 'READY'
-
-            msg = 'SET {}'.format(encode_dict(TEST_ROOT))
-            print(msg, file=p.stdin, flush=True)
-            reply = p.stdout.readline().strip()
-            assert reply == 'OK'
-
-            with open(os.path.join(t, 'file1'), 'r') as f:
-                pass
-
-            with pytest.raises(OSError) as exc_info:
-                with open(os.path.join(t, 'file1'), 'r+') as f:
-                    pass
-            assert exc_info.value.errno == errno.EACCES
-
-            with pytest.raises(OSError) as exc_info:
-                with open(os.path.join(t, 'file1'), 'w') as f:
-                    pass
-            assert exc_info.value.errno == errno.EACCES
-
-
-def test_read_file1():
-    with get_tmp_dir() as t:
-        with get_proc(t) as p:
-            reply = p.stdout.readline().strip()
-            assert reply == 'READY'
-
-            msg = 'SET {}'.format(encode_dict(TEST_ROOT))
-            print(msg, file=p.stdin, flush=True)
-            reply = p.stdout.readline().strip()
-            assert reply == 'OK'
-
-            with open(os.path.join(t, 'file1'), 'rb') as f:
-                data = f.read()
-                assert data == ALL_BYTES
