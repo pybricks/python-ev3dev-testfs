@@ -1,12 +1,12 @@
 root = true
 
-[{.git*,.editorconfig,*.cfg}]
+[{.git*,.editorconfig,*.cfg,.coveragerc}]
 insert_final_newline = true
 trim_trailing_whitespace = true
 indent_size = 4
 indent_style = space
 
-[*.py]
+[*.{py,rst,sh}]
 insert_final_newline = true
 trim_trailing_whitespace = true
 indent_size = 4
@@ -17,9 +17,3 @@ insert_final_newline = false
 trim_trailing_whitespace = true
 indent_size = 4
 indent_style = tab
-
-[*.rst]
-insert_final_newline = true
-trim_trailing_whitespace = true
-indent_size = 4
-indent_style = space
