@@ -98,7 +98,8 @@ class SysfsFuse(fuse.Fuse):
         return current
 
     def main(self):
-        self._thread.start()
+        if self.fuse_args.mount_expected():
+            self._thread.start()
         super().main()
 
     def getattr(self, path):
