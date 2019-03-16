@@ -1,10 +1,8 @@
 import errno
-import os
 import select
 import stat
 
-from contextlib import contextmanager
-from tempfile import mkdtemp
+from pathlib import Path
 
 import pytest
 
@@ -47,15 +45,6 @@ TEST_ROOT = {
 }
 
 
-@contextmanager
-def get_tmp_dir() -> str:
-    t = mkdtemp()
-    try:
-        yield t
-    finally:
-        os.rmdir(t)
-
-
 def test_encode_decode_bytes():
     assert len(ALL_BYTES) == 256
     enc = encode_bytes(ALL_BYTES)
@@ -64,118 +53,107 @@ def test_encode_decode_bytes():
     assert dec == ALL_BYTES
 
 
-def test_sysfs_private_read_timeout():
-    with get_tmp_dir() as t:
-        with Sysfs(t) as sysfs:
-            with pytest.raises(TimeoutError) as exc_info:
-                sysfs._read()
-            assert exc_info.type == TimeoutError
+def test_sysfs_private_read_timeout(tmp_path: Path):
+    with Sysfs(str(tmp_path.resolve())) as sysfs:
+        with pytest.raises(TimeoutError) as exc_info:
+            sysfs._read()
+        assert exc_info.type == TimeoutError
 
 
-def test_sysfs_stat_dir1():
-    with get_tmp_dir() as t:
-        with Sysfs(t) as sysfs:
-            sysfs.tree = TEST_ROOT
+def test_sysfs_stat_dir1(tmp_path: Path):
+    with Sysfs(str(tmp_path.resolve())) as sysfs:
+        sysfs.tree = TEST_ROOT
 
-            st = os.stat(os.path.join(t, 'dir1'))
-            assert stat.S_IFMT(st.st_mode) == stat.S_IFDIR
-            assert stat.S_IMODE(st.st_mode) == 0o755
-
-
-def test_sysfs_ls_root():
-    with get_tmp_dir() as t:
-        with Sysfs(t):
-            ls = os.listdir(t)
-            assert len(ls) == 0
+        st = tmp_path.joinpath('dir1').stat()
+        assert stat.S_IFMT(st.st_mode) == stat.S_IFDIR
+        assert stat.S_IMODE(st.st_mode) == 0o755
 
 
-def test_sysfs_ls_dir1():
-    with get_tmp_dir() as t:
-        with Sysfs(t) as sysfs:
-            sysfs.tree = TEST_ROOT
-
-            ls = os.listdir(os.path.join(t, 'dir1'))
-            assert 'dir2' in ls
-            assert len(ls) == 1
+def test_sysfs_ls_root(tmp_path: Path):
+    with Sysfs(str(tmp_path.resolve())):
+        ls = list(tmp_path.iterdir())
+        assert len(ls) == 0
 
 
-def test_sysfs_open_dir1():
-    with get_tmp_dir() as t:
-        with Sysfs(t) as sysfs:
-            sysfs.tree = TEST_ROOT
+def test_sysfs_ls_dir1(tmp_path: Path):
+    with Sysfs(str(tmp_path.resolve())) as sysfs:
+        sysfs.tree = TEST_ROOT
 
-            with pytest.raises(OSError) as exc_info:
-                with open(os.path.join(t, 'dir1')):
-                    pass
-            assert exc_info.value.errno == errno.EISDIR
+        ls = [x.name for x in tmp_path.joinpath('dir1').iterdir()]
+        assert 'dir2' in ls
+        assert len(ls) == 1
 
 
-def test_sysfs_open_file1():
-    with get_tmp_dir() as t:
-        with Sysfs(t) as sysfs:
-            sysfs.tree = TEST_ROOT
+def test_sysfs_open_dir1(tmp_path: Path):
+    with Sysfs(str(tmp_path.resolve())) as sysfs:
+        sysfs.tree = TEST_ROOT
 
-            with open(os.path.join(t, 'file1'), 'r'):
+        with pytest.raises(OSError) as exc_info:
+            with open(tmp_path.joinpath('dir1')):
                 pass
-
-            with pytest.raises(OSError) as exc_info:
-                with open(os.path.join(t, 'file1'), 'r+'):
-                    pass
-            assert exc_info.value.errno == errno.EACCES
-
-            with pytest.raises(OSError) as exc_info:
-                with open(os.path.join(t, 'file1'), 'w'):
-                    pass
-            assert exc_info.value.errno == errno.EACCES
+        assert exc_info.value.errno == errno.EISDIR
 
 
-def test_sysfs_read_file1():
-    with get_tmp_dir() as t:
-        with Sysfs(t) as sysfs:
-            sysfs.tree = TEST_ROOT
+def test_sysfs_open_file1(tmp_path: Path):
+    with Sysfs(str(tmp_path.resolve())) as sysfs:
+        sysfs.tree = TEST_ROOT
 
-            with open(os.path.join(t, 'file1'), 'rb') as f:
-                data = f.read()
-                assert data == ALL_BYTES
+        with open(tmp_path.joinpath('file1'), 'r'):
+            pass
 
+        with pytest.raises(OSError) as exc_info:
+            with open(tmp_path.joinpath('file1'), 'r+'):
+                pass
+        assert exc_info.value.errno == errno.EACCES
 
-def test_sysfs_write_file2():
-    with get_tmp_dir() as t:
-        with Sysfs(t) as sysfs:
-            sysfs.tree = TEST_ROOT
-
-            with open(os.path.join(t, 'file2'), 'wb', buffering=0) as f:
-                written = f.write(b'test')
-                assert written == 4
-                file2 = sysfs.tree['contents'][2]
-                assert file2['name'] == 'file2'
-                assert decode_bytes(file2['written']['buf']) == b'test'
-                assert file2['written']['offset'] == 0
+        with pytest.raises(OSError) as exc_info:
+            with open(tmp_path.joinpath('file1'), 'w'):
+                pass
+        assert exc_info.value.errno == errno.EACCES
 
 
-def test_sysfs_poll_file1():
-    with get_tmp_dir() as t:
-        with Sysfs(t) as sysfs:
-            sysfs.tree = TEST_ROOT
+def test_sysfs_read_file1(tmp_path: Path):
+    with Sysfs(str(tmp_path.resolve())) as sysfs:
+        sysfs.tree = TEST_ROOT
 
-            with open(os.path.join(t, 'file1'), 'rb') as f:
-                p = select.poll()
-                p.register(f.fileno(), select.POLLIN)
+        data = tmp_path.joinpath('file1').read_bytes()
+        assert data == ALL_BYTES
 
-                # poll_events have not been set for file1, so poll() should
-                # time out
-                ok = True
-                for fd, events in p.poll(500):
-                    ok = False
-                assert ok  # didn't timed out if not ok
 
-                sysfs.notify('/file1', select.POLLIN | select.POLLERR)
+def test_sysfs_write_file2(tmp_path: Path):
+    with Sysfs(str(tmp_path.resolve())) as sysfs:
+        sysfs.tree = TEST_ROOT
 
-                # now we have sent a notification, so poll() should return
-                # something
+        written = tmp_path.joinpath('file2').write_bytes(b'test')
+        assert written == 4
+        file2 = sysfs.tree['contents'][2]
+        assert file2['name'] == 'file2'
+        assert decode_bytes(file2['written']['buf']) == b'test'
+        assert file2['written']['offset'] == 0
+
+
+def test_sysfs_poll_file1(tmp_path: Path):
+    with Sysfs(str(tmp_path.resolve())) as sysfs:
+        sysfs.tree = TEST_ROOT
+
+        with open(tmp_path.joinpath('file1'), 'rb') as f:
+            p = select.poll()
+            p.register(f.fileno(), select.POLLIN)
+
+            # poll_events have not been set for file1, so poll() should
+            # time out
+            ok = True
+            for fd, events in p.poll(500):
                 ok = False
-                for fd, events in p.poll(500):
-                    assert fd == f.fileno()
-                    assert events == select.POLLIN | select.POLLERR
-                    ok = True
-                assert ok  # timed out if not ok
+            assert ok  # didn't timed out if not ok
+
+            sysfs.notify('/file1', select.POLLIN | select.POLLERR)
+
+            # now we have sent a notification, so poll() should return
+            # something
+            ok = False
+            for fd, events in p.poll(500):
+                assert fd == f.fileno()
+                assert events == select.POLLIN | select.POLLERR
+                ok = True
+            assert ok  # timed out if not ok
