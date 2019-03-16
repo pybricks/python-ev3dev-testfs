@@ -1,5 +1,6 @@
 import errno
 import os
+import select
 import stat
 
 from contextlib import contextmanager
@@ -150,3 +151,31 @@ def test_sysfs_write_file2():
                 assert file2['name'] == 'file2'
                 assert decode_bytes(file2['written']['buf']) == b'test'
                 assert file2['written']['offset'] == 0
+
+
+def test_sysfs_poll_file1():
+    with get_tmp_dir() as t:
+        with Sysfs(t) as sysfs:
+            sysfs.tree = TEST_ROOT
+
+            with open(os.path.join(t, 'file1'), 'rb') as f:
+                p = select.poll()
+                p.register(f.fileno(), select.POLLIN)
+
+                # poll_events have not been set for file1, so poll() should
+                # time out
+                ok = True
+                for fd, events in p.poll(500):
+                    ok = False
+                assert ok  # didn't timed out if not ok
+
+                sysfs.notify('/file1', select.POLLIN | select.POLLERR)
+
+                # now we have sent a notification, so poll() should return
+                # something
+                ok = False
+                for fd, events in p.poll(500):
+                    assert fd == f.fileno()
+                    assert events == select.POLLIN | select.POLLERR
+                    ok = True
+                assert ok  # timed out if not ok

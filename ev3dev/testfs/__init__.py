@@ -92,3 +92,20 @@ class Sysfs():
         if reply != 'OK':
             # TODO: get error message from reply
             raise IOError()
+
+    def notify(self, path: str, events: int):
+        """Send poll notification to a path.
+
+        Parameters
+        ----------
+        path
+            The absolute path in the filestem (relative to the mount point)
+
+        events
+            The event flags (``select.POLLIN``, etc.)
+        """
+        self._write('NOTIFY {} {}'.format(path, events))
+        reply = self._read()
+        if reply != 'OK':
+            # TODO: get error message from reply
+            raise IOError()

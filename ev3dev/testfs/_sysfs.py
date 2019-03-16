@@ -40,6 +40,7 @@ class SysfsFuse(fuse.Fuse):
         self._root = dict(_ROOT)
         self._thread = threading.Thread(target=self._run)
         self._thread.daemon = True
+        self._poll_handles = {}
 
     def _parse_line(self, line: str) -> str:
         try:
@@ -48,6 +49,21 @@ class SysfsFuse(fuse.Fuse):
                 return 'OK {}'.format(encode_dict(self._root))
             if line[0] == 'SET':
                 self._root = decode_dict(line[1])
+                return 'OK'
+            if line[0] == 'NOTIFY':
+                path = line[1]
+                item = self._get_item(path)
+                if not item:
+                    raise ValueError('Not a valid path')
+
+                # set the event flags
+                item['poll_events'] = int(line[2])
+
+                # if there is a poll handle, notify (calls poll method)
+                if path in self._poll_handles:
+                    self.NotifyPoll(self._poll_handles[path])
+                    del self._poll_handles[path]
+
                 return 'OK'
             raise ValueError('Unknown command: {}'.format(line[0]))
         except Exception as ex:
@@ -166,6 +182,25 @@ class SysfsFuse(fuse.Fuse):
 
     def flush(self, path):
         pass
+
+    def poll(self, path, poll_handle):
+        item = self._get_item(path)
+        if not item:
+            return -ENOENT
+
+        # Unfortunately in libfuse 2.x there is not a way to see the event
+        # flags that were requested. Ideally, we would check this and adjust
+        # the behavior accordingly. For sysfs, only POLLPRI blocks.
+
+        events = item.get('poll_events', 0)
+        if not events:
+            # if events is 0, save the poll handle for later notification
+            self._poll_handles[path] = poll_handle
+
+        # clear the events for the next call
+        item['poll_events'] = 0
+
+        return events
 
 
 if __name__ == '__main__':

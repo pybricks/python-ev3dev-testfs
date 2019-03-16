@@ -37,21 +37,37 @@ TEST_ROOT = {
 }
 
 
-def test_parse_line():
+def test_parse_line_GET():
     SMALL_DICT = {'key': 'value'}
     sysfs = SysfsFuse()
-
     sysfs._root = copy.deepcopy(SMALL_DICT)
+
     reply = sysfs._parse_line("GET")
     split = reply.split()
     assert len(split) == 2
     assert split[0] == 'OK'
     assert decode_dict(split[1]) == SMALL_DICT
 
+
+def test_parse_line_SET():
+    SMALL_DICT = {'key': 'value'}
+    sysfs = SysfsFuse()
     sysfs._root = copy.deepcopy(TEST_ROOT)
+
     reply = sysfs._parse_line("SET eyJrZXkiOiAidmFsdWUifQ==")
     assert reply.split() == ['OK']
     assert sysfs._root == SMALL_DICT
+
+
+def test_parse_line_NOTIFY():
+    sysfs = SysfsFuse()
+    sysfs._root = copy.deepcopy(TEST_ROOT)
+
+    reply = sysfs._parse_line("NOTIFY /file1 1")
+    assert reply.split() == ['OK']
+    file1 = sysfs._root['contents'][1]
+    assert file1['name'] == 'file1'
+    assert file1['poll_events'] == 1
 
 
 def test_get_item():
