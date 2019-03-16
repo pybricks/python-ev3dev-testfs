@@ -195,3 +195,25 @@ def test_write():
 
     ret = sysfs.write('/file0', b'test', 0)
     assert ret == -errno.ENOENT
+
+
+def test_poll():
+    sysfs = SysfsFuse()
+    sysfs._root = copy.deepcopy(TEST_ROOT)
+    poll_handle = object()
+
+    ret = sysfs.poll('/file0', poll_handle)
+    assert ret == -errno.ENOENT
+
+    ret = sysfs.poll('/file1', poll_handle)
+    assert ret == 0
+    assert sysfs._poll_handles['/file1'] is poll_handle
+
+    del sysfs._poll_handles['/file1']
+
+    file1 = sysfs._root['contents'][1]
+    assert file1['name'] == 'file1'
+    file1['poll_events'] = 1
+    ret = sysfs.poll('/file1', poll_handle)
+    assert ret == 1
+    assert '/file1' not in sysfs._poll_handles
