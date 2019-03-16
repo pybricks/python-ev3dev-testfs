@@ -128,8 +128,8 @@ def test_sysfs_write_file2(tmp_path: Path):
         assert written == 4
         file2 = sysfs.tree['contents'][2]
         assert file2['name'] == 'file2'
-        assert decode_bytes(file2['written']['buf']) == b'test'
-        assert file2['written']['offset'] == 0
+        assert decode_bytes(file2['write_data']) == b'test'
+        assert file2['write_offset'] == 0
 
 
 def test_sysfs_poll_file1(tmp_path: Path):

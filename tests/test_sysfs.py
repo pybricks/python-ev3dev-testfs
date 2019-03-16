@@ -190,8 +190,8 @@ def test_write():
 
     ret = sysfs.write('/file1', b'test', 10)
     assert ret == 4
-    assert decode_bytes(item['written']['buf']) == b'test'
-    assert item['written']['offset'] == 10
+    assert decode_bytes(item['write_data']) == b'test'
+    assert item['write_offset'] == 10
 
     ret = sysfs.write('/file0', b'test', 0)
     assert ret == -errno.ENOENT

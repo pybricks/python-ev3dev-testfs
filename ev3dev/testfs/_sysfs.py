@@ -166,10 +166,8 @@ class SysfsFuse(fuse.Fuse):
         if not item:
             return -ENOENT
 
-        item['written'] = {
-            'buf': encode_bytes(buf),
-            'offset': offset,
-        }
+        item['write_data'] = encode_bytes(buf)
+        item['write_offset'] = offset
 
         return len(buf)
 
