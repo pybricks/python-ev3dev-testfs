@@ -20,7 +20,7 @@ def wait_for_mount(mount_point: str, timeout: float = 0.5):
     Parameters
     ----------
         mount_point
-            The absolute path to the mount point.
+            The path to the mount point.
         timeout
             Timeout in seconds
 

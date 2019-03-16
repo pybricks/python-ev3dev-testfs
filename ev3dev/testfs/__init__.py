@@ -28,8 +28,8 @@ class Sysfs():
         Parameters
         ----------
         mount_point
-            The absolute path to an existing directory where the filesystem
-            will be mounted.
+            The path to an existing directory where the filesystem will be
+            mounted.
 
         Notes
         -----
@@ -42,14 +42,14 @@ class Sysfs():
             with Sysfs(path) as sysfs:
                 # do stuff with filesystem
         """
+        self._mount_point = str(mount_point)
         args = [
             sys.executable, '-m', 'ev3dev.testfs._sysfs',
-            mount_point,
+            self._mount_point,
             # '-d',
             '-f',
             '-o', 'auto_unmount'
         ]
-        self._mount_point = mount_point
         self._p = Popen(args, stdin=PIPE, stdout=PIPE, universal_newlines=True)
         self._poll = poll()
         self._poll.register(self._p.stdout.fileno(), POLLIN)

@@ -54,14 +54,14 @@ def test_encode_decode_bytes():
 
 
 def test_sysfs_private_read_timeout(tmp_path: Path):
-    with Sysfs(str(tmp_path.resolve())) as sysfs:
+    with Sysfs(tmp_path) as sysfs:
         with pytest.raises(TimeoutError) as exc_info:
             sysfs._read()
         assert exc_info.type == TimeoutError
 
 
 def test_sysfs_stat_dir1(tmp_path: Path):
-    with Sysfs(str(tmp_path.resolve())) as sysfs:
+    with Sysfs(tmp_path) as sysfs:
         sysfs.tree = TEST_ROOT
 
         st = tmp_path.joinpath('dir1').stat()
@@ -70,13 +70,13 @@ def test_sysfs_stat_dir1(tmp_path: Path):
 
 
 def test_sysfs_ls_root(tmp_path: Path):
-    with Sysfs(str(tmp_path.resolve())):
+    with Sysfs(tmp_path):
         ls = list(tmp_path.iterdir())
         assert len(ls) == 0
 
 
 def test_sysfs_ls_dir1(tmp_path: Path):
-    with Sysfs(str(tmp_path.resolve())) as sysfs:
+    with Sysfs(tmp_path) as sysfs:
         sysfs.tree = TEST_ROOT
 
         ls = [x.name for x in tmp_path.joinpath('dir1').iterdir()]
@@ -85,7 +85,7 @@ def test_sysfs_ls_dir1(tmp_path: Path):
 
 
 def test_sysfs_open_dir1(tmp_path: Path):
-    with Sysfs(str(tmp_path.resolve())) as sysfs:
+    with Sysfs(tmp_path) as sysfs:
         sysfs.tree = TEST_ROOT
 
         with pytest.raises(OSError) as exc_info:
@@ -95,7 +95,7 @@ def test_sysfs_open_dir1(tmp_path: Path):
 
 
 def test_sysfs_open_file1(tmp_path: Path):
-    with Sysfs(str(tmp_path.resolve())) as sysfs:
+    with Sysfs(tmp_path) as sysfs:
         sysfs.tree = TEST_ROOT
 
         with open(tmp_path.joinpath('file1'), 'r'):
@@ -113,7 +113,7 @@ def test_sysfs_open_file1(tmp_path: Path):
 
 
 def test_sysfs_read_file1(tmp_path: Path):
-    with Sysfs(str(tmp_path.resolve())) as sysfs:
+    with Sysfs(tmp_path) as sysfs:
         sysfs.tree = TEST_ROOT
 
         data = tmp_path.joinpath('file1').read_bytes()
@@ -121,7 +121,7 @@ def test_sysfs_read_file1(tmp_path: Path):
 
 
 def test_sysfs_write_file2(tmp_path: Path):
-    with Sysfs(str(tmp_path.resolve())) as sysfs:
+    with Sysfs(tmp_path) as sysfs:
         sysfs.tree = TEST_ROOT
 
         written = tmp_path.joinpath('file2').write_bytes(b'test')
@@ -133,7 +133,7 @@ def test_sysfs_write_file2(tmp_path: Path):
 
 
 def test_sysfs_poll_file1(tmp_path: Path):
-    with Sysfs(str(tmp_path.resolve())) as sysfs:
+    with Sysfs(tmp_path) as sysfs:
         sysfs.tree = TEST_ROOT
 
         with open(tmp_path.joinpath('file1'), 'rb') as f:
