@@ -38,8 +38,7 @@ class SysfsFuse(fuse.Fuse):
     def __init__(self):
         super().__init__()
         self._root = dict(_ROOT)
-        self._thread = threading.Thread(target=self._run)
-        self._thread.daemon = True
+        self._thread = threading.Thread(target=self._run, daemon=True)
         self._poll_handles = {}
 
     def _parse_line(self, line: str) -> str:
