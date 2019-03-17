@@ -91,10 +91,8 @@ def test_getattr():
     sysfs = SysfsFuse()
     sysfs._root = copy.deepcopy(TEST_ROOT)
 
-    attr = sysfs.getattr('/')
-    assert stat.S_IFMT(attr.st_mode) == stat.S_IFDIR
-    assert stat.S_IMODE(attr.st_mode) == 0o755
-    assert attr.st_size == 0
+    ret = sysfs.getattr('/file0')
+    assert ret == -errno.ENOENT
 
     attr = sysfs.getattr('/dir1')
     assert stat.S_IFMT(attr.st_mode) == stat.S_IFDIR
@@ -143,6 +141,9 @@ def test_open():
 
     assert sysfs._root['contents'][1]['name'] == 'file1'
 
+    ret = sysfs.open('/file0', os.O_RDONLY)
+    assert ret == -errno.ENOENT
+
     # read/write file can be opened any which way
     sysfs._root['contents'][1]['mode'] = 0o666
     err = sysfs.open('/file1', os.O_RDONLY)
@@ -175,6 +176,9 @@ def test_read():
     sysfs = SysfsFuse()
     sysfs._root = copy.deepcopy(TEST_ROOT)
 
+    ret = sysfs.read('/file0', 4096, 0)
+    assert ret == -errno.ENOENT
+
     ret = sysfs.read('/file1', 4096, 0)
     assert ret == ALL_BYTES
     ret = sysfs.read('/file0', 4096, 0)
@@ -185,6 +189,9 @@ def test_write():
     sysfs = SysfsFuse()
     sysfs._root = copy.deepcopy(TEST_ROOT)
 
+    ret = sysfs.write('/file0', b'', 0)
+    assert ret == -errno.ENOENT
+
     item = sysfs._root['contents'][1]
     assert item['name'] == 'file1'
 
@@ -194,6 +201,14 @@ def test_write():
     assert item['write_offset'] == 10
 
     ret = sysfs.write('/file0', b'test', 0)
+    assert ret == -errno.ENOENT
+
+
+def test_truncate():
+    sysfs = SysfsFuse()
+    sysfs._root = copy.deepcopy(TEST_ROOT)
+
+    ret = sysfs.truncate('/file0', 0)
     assert ret == -errno.ENOENT
 
 
