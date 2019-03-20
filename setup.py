@@ -9,5 +9,5 @@ setup(
     namespace_packages=['ev3dev'],
     packages=['ev3dev.testfs'],
     setup_requires=['pytest-runner'],
-    test_requires=['pytest'],
+    tests_require=['pytest'],
 )
