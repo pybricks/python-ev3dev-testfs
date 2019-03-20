@@ -1,0 +1,15 @@
+language: python
+python:
+- "3.6.7"
+
+dist: xenial
+
+install:
+- sudo apt-get install libfuse-dev
+- pip install pipenv
+- pipenv install --dev
+script:
+- pipenv run python setup.py test
+- pipenv run python setup.py lint
+- pipenv run python setup.py doc
+- pipenv run ./coverage.sh
